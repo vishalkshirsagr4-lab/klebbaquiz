@@ -959,18 +959,20 @@ export default function AdminTeams() {
     limit: 20,
     status: status || undefined,
     competition: compFilter || undefined,
+    competitionId: compFilter || undefined,
     q: debouncedQ || undefined,
   })}`;
 
-  const { data, loading, error, reload } = useFetch(queryUrl);
+  const { data, loading, error, reload } = useFetch(() => api.get(queryUrl), [queryUrl]);
 
   // Fetch competitions for assignment dropdown
-  const { data: compData } = useFetch('/admin/competitions');
+  const { data: compData } = useFetch(() => api.get('/admin/competitions'), []);
   const competitions = compData?.competitions || [];
 
   // Fetch students for existing select
-  const { data: userData } = useFetch('/admin/users?limit=200');
+  const { data: userData } = useFetch(() => api.get('/admin/users?limit=200'), []);
   const students = userData?.items || [];
+  const teamsList = data?.teams || data?.items || [];
 
   const handleDeleteTeam = async () => {
     if (!deleteTarget) return;
@@ -1068,7 +1070,7 @@ export default function AdminTeams() {
         </div>
       ) : error ? (
         <ErrorState message={error.message} onRetry={reload} />
-      ) : !data?.items?.length ? (
+      ) : !teamsList.length ? (
         <EmptyState
           icon={Users2}
           title="No teams registered yet"
@@ -1093,7 +1095,7 @@ export default function AdminTeams() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {data.items.map((t) => {
+              {teamsList.map((t) => {
                 const count = 1 + (t.members?.length || 0);
                 return (
                   <tr key={t.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">

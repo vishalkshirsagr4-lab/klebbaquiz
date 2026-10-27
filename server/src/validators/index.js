@@ -94,7 +94,8 @@ const changeLeader = memberInput;
 
 const listTeamsQuery = z.object({
   q: z.string().trim().max(100).optional(),
-  status: z.enum(['all', 'active', 'inactive']).default('all'),
+  status: z.enum(['all', 'active', 'inactive']).or(z.literal('').transform(() => 'all')).default('all'),
+  competition: z.string().trim().optional(),
   competitionId: z.string().trim().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),

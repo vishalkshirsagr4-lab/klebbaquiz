@@ -6,10 +6,13 @@ const mongoose = require('mongoose');
 
 // make sure all models/indexes are registered
 require('./models/User');
+require('./models/Team');
 require('./models/Competition');
 require('./models/Question');
 require('./models/Attempt');
 require('./models/AuditLog');
+require('./models/Announcement');
+require('./models/Notification');
 
 async function main() {
   await connectDB();

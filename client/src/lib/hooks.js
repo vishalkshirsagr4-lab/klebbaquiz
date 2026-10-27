@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from './api.js';
 
 /** Loads data with loading / error state. `fn` is re-run when `deps` change or reload() is called. */
 export function useFetch(fn, deps = [], { interval } = {}) {
@@ -11,20 +12,21 @@ export function useFetch(fn, deps = [], { interval } = {}) {
     const id = ++seq.current;
     if (!silent) setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const data = await fnRef.current();
+      const data = typeof fnRef.current === 'function' ? await fnRef.current() : await api.get(fnRef.current);
       if (id === seq.current) setState({ data, error: null, loading: false });
     } catch (error) {
       if (id === seq.current) setState((s) => ({ data: silent ? s.data : null, error: silent ? s.error : error, loading: false }));
     }
   }, []);
 
+  const depKey = typeof fn === 'string' ? fn : '';
   useEffect(() => {
     run();
     return () => {
       seq.current += 1;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [depKey, ...(deps || [])]);
 
   useEffect(() => {
     if (!interval) return undefined;

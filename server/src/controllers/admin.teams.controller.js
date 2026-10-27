@@ -85,13 +85,14 @@ async function resolveMemberAccount({ userId, name, email, organization }, teamI
  * List teams with search, status filter, and competition filter
  */
 exports.list = asyncHandler(async (req, res) => {
-  const { q, status = 'all', competitionId, page = 1, limit = 20 } = req.query;
+  const { q, status = 'all', page = 1, limit = 20 } = req.query;
+  const competitionId = req.query.competitionId || req.query.competition;
   const filter = {};
 
   if (status === 'active') filter.isActive = true;
   else if (status === 'inactive') filter.isActive = false;
 
-  if (competitionId) {
+  if (competitionId && mongoose.isValidObjectId(competitionId)) {
     filter.competition = competitionId;
   }
 
@@ -113,21 +114,37 @@ exports.list = asyncHandler(async (req, res) => {
     Team.countDocuments(filter),
   ]);
 
-  res.json({
-    teams: teams.map((t) => ({
-      id: String(t._id),
-      name: t.name,
-      code: t.code,
-      leader: t.leader,
-      members: t.members || [],
-      memberCount: (t.members?.length || 0) + (t.leader ? 1 : 0),
-      competition: t.competition,
-      maxMembers: t.maxMembers,
-      notes: t.notes,
-      isActive: t.isActive,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
+  const formatted = teams.map((t) => ({
+    id: String(t._id),
+    name: t.name,
+    code: t.code,
+    leader: t.leader
+      ? {
+          id: String(t.leader._id),
+          ...t.leader,
+        }
+      : null,
+    members: (t.members || []).map((m) => ({
+      id: String(m._id),
+      ...m,
     })),
+    memberCount: (t.members?.length || 0) + (t.leader ? 1 : 0),
+    competition: t.competition
+      ? {
+          id: String(t.competition._id),
+          ...t.competition,
+        }
+      : null,
+    maxMembers: t.maxMembers,
+    notes: t.notes,
+    isActive: t.isActive,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+  }));
+
+  res.json({
+    teams: formatted,
+    items: formatted,
     total,
     page: Number(page),
     pages: Math.ceil(total / limit) || 1,

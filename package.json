@@ -18,7 +18,7 @@
     "seed": "npm --prefix server run seed",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
-    "start": "node server/src/server.js",
+    "start": "node dev.js",
     "lint": "node -e \"console.log('Lint passed')\"",
     "test": "node --test server/tests/e2e.test.js server/tests/admin-security.test.js"
   }
