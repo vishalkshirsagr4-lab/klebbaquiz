@@ -13,7 +13,18 @@ const auditLogSchema = new Schema(
     ip: { type: String },
     userAgent: { type: String, maxlength: 300 },
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.id = ret._id ? ret._id.toString() : undefined;
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
 );
 
 auditLogSchema.index({ createdAt: -1 });

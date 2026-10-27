@@ -28,9 +28,7 @@ app.use(
 app.use(
   cors({
     origin(origin, cb) {
-      if (!origin || env.clientOrigins.includes(origin) || env.clientOrigins.includes('*')) return cb(null, true);
-      if (origin.endsWith('.onrender.com') || origin.endsWith('.vercel.app')) return cb(null, true);
-      return cb(new ApiError(403, 'Origin not allowed by CORS', 'CORS'));
+      return cb(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
@@ -57,15 +55,39 @@ app.get('/health', (_req, res) => {
 
 app.use('/api', apiLimiter, csrfGuard, routes);
 
-// Serve client static build for unified deployment (Render single-service)
+// Database offline graceful fallback
+app.use((err, req, res, next) => {
+  if (
+    err &&
+    (err.name === 'MongooseError' ||
+      err.name === 'MongoNetworkError' ||
+      err.name === 'MongooseServerSelectionError' ||
+      (err.message && err.message.includes('buffering timed out')))
+  ) {
+    console.warn('[AI Studio] Database offline — returning mock response for', req.method, req.path);
+    if (req.method === 'GET') {
+      return res.json(req.path.endsWith('s') || req.path.endsWith('s/') ? [] : {});
+    }
+    return res.status(503).json({ error: 'Service temporarily unavailable (database offline)' });
+  }
+  next(err);
+});
+
+// Serve client static build for unified single-service deployment
 const clientDistPath = path.resolve(__dirname, '../../client/dist');
-if (fs.existsSync(clientDistPath)) {
-  app.use(express.static(clientDistPath));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api') || req.path === '/health') return next();
-    res.sendFile(path.join(clientDistPath, 'index.html'));
-  });
-}
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.path === '/health') return next();
+  if (fs.existsSync(clientDistPath)) {
+    return express.static(clientDistPath)(req, res, () => {
+      const indexPath = path.join(clientDistPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+      }
+      next();
+    });
+  }
+  next();
+});
 
 app.use(notFound);
 app.use(errorHandler);

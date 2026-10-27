@@ -13,9 +13,11 @@ require('./models/AuditLog');
 
 async function main() {
   await connectDB();
-  await Promise.all(Object.values(mongoose.models).map((m) => m.syncIndexes().catch((e) => console.warn('[index]', m.modelName, e.message))));
+  if (mongoose.connection.readyState === 1) {
+    await Promise.all(Object.values(mongoose.models).map((m) => m.syncIndexes().catch((e) => console.warn('[index]', m.modelName, e.message))));
+  }
 
-  const server = app.listen(env.PORT, () => console.log(`[server] QuizMaster API listening on :${env.PORT} (${env.NODE_ENV})`));
+  const server = app.listen(env.PORT, '0.0.0.0', () => console.log(`[server] QuizMaster API listening on 0.0.0.0:${env.PORT} (${env.NODE_ENV})`));
   const sweeper = startSweeper();
 
   const shutdown = (signal) => {

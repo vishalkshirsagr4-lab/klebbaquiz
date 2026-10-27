@@ -1,0 +1,6 @@
+{
+  "name": "QuizMaster",
+  "description": "Secure online quiz competitions platform with real-time timers and leaderboards",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
