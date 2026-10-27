@@ -2,8 +2,13 @@ const User = require('../models/User');
 const Competition = require('../models/Competition');
 const Question = require('../models/Question');
 const { refreshStats } = require('../services/competition');
+const env = require('./env');
 
 async function seedDefaults() {
+  // In production, do not automatically seed default test passwords
+  if (env.isProd && process.env.ALLOW_SEED !== 'true') {
+    return;
+  }
   try {
     // 1. Ensure admin account exists
     let admin = await User.findOne({ role: 'admin' });

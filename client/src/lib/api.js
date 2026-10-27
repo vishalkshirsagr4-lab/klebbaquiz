@@ -17,6 +17,7 @@ export const setUnauthorizedHandler = (fn) => {
 
 async function request(method, path, body, { raw = false } = {}) {
   let res;
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('qm_token') : null;
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
@@ -24,6 +25,7 @@ async function request(method, path, body, { raw = false } = {}) {
       cache: 'no-store',
       headers: {
         'X-Requested-With': 'quizmaster',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,

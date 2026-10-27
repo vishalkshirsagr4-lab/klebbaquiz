@@ -110,7 +110,7 @@ export default function Login() {
           </form>
 
           <p className="mt-8 flex items-center justify-center gap-2 text-xs text-slate-400">
-            <Lock className="h-3.5 w-3.5" aria-hidden /> Your session is protected by a secure, HTTP-only cookie.
+            <Lock className="h-3.5 w-3.5" aria-hidden /> Your session is protected by secure authentication.
           </p>
         </div>
       </section>

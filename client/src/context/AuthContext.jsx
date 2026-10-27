@@ -8,16 +8,25 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUnauthorizedHandler(() => setUser(null));
+    setUnauthorizedHandler(() => {
+      try { localStorage.removeItem('qm_token'); } catch {}
+      setUser(null);
+    });
     api
       .get('/auth/me')
       .then((r) => setUser(r.user))
-      .catch(() => setUser(null))
+      .catch(() => {
+        try { localStorage.removeItem('qm_token'); } catch {}
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (identifier, password) => {
     const r = await api.post('/auth/login', { identifier, password });
+    if (r.token) {
+      try { localStorage.setItem('qm_token', r.token); } catch {}
+    }
     setUser(r.user);
     return r.user;
   }, []);
@@ -26,6 +35,7 @@ export function AuthProvider({ children }) {
     try {
       await api.post('/auth/logout');
     } finally {
+      try { localStorage.removeItem('qm_token'); } catch {}
       setUser(null);
     }
   }, []);

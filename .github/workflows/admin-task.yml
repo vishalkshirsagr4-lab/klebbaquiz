@@ -1,0 +1,83 @@
+name: Production Admin Operations
+
+# Manually triggered workflow for secure database administration on Render/Atlas
+# without requiring a paid Render Shell subscription or exposing IP whitelist barriers.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        options:
+          - 'check-status'
+          - 'setup-admin'
+          - 'reset-password'
+      admin_username:
+        description: 'Admin username (for setup-admin or reset-password)'
+        required: false
+        type: string
+        default: 'admin'
+      admin_name:
+        description: 'Admin display name (for setup-admin)'
+        required: false
+        type: string
+        default: 'QuizMaster Administrator'
+      admin_email:
+        description: 'Admin email (optional, for setup-admin)'
+        required: false
+        type: string
+      admin_password:
+        description: 'Admin password (min 10 chars, upper+lower+number)'
+        required: false
+        type: string
+
+jobs:
+  admin-task:
+    name: Execute Admin Operation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --omit=dev
+
+      - name: Mask sensitive password input
+        run: |
+          if [ -n "${{ inputs.admin_password }}" ]; then
+            echo "::add-mask::${{ inputs.admin_password }}"
+          fi
+
+      - name: Execute Check Admin Status
+        if: ${{ inputs.task == 'check-status' }}
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          npm run check-admin-status
+
+      - name: Execute Setup Admin
+        if: ${{ inputs.task == 'setup-admin' }}
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          ADMIN_USERNAME: ${{ inputs.admin_username }}
+          ADMIN_NAME: ${{ inputs.admin_name }}
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+          ADMIN_PASSWORD: ${{ inputs.admin_password }}
+        run: |
+          npm run setup-admin
+
+      - name: Execute Reset Admin Password
+        if: ${{ inputs.task == 'reset-password' }}
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          ADMIN_IDENTIFIER: ${{ inputs.admin_username }}
+          NEW_ADMIN_PASSWORD: ${{ inputs.admin_password }}
+        run: |
+          npm run reset-admin-password

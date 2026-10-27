@@ -53,13 +53,13 @@ exports.login = asyncHandler(async (req, res) => {
   const lastLoginAt = new Date();
   await User.updateOne({ _id: user._id }, { $set: { failedLoginCount: 0, lastLoginAt }, $unset: { lockUntil: 1 } });
   user.lastLoginAt = lastLoginAt;
-  issueSession(res, user);
+  const token = issueSession(res, user, req);
   await audit(req, 'LOGIN_SUCCESS', { actor: user });
-  res.json({ user: publicUser(user) });
+  res.json({ user: publicUser(user), token });
 });
 
 exports.logout = asyncHandler(async (req, res) => {
-  clearSession(res);
+  clearSession(res, req);
   res.json({ ok: true });
 });
 
@@ -82,7 +82,7 @@ exports.changePassword = asyncHandler(async (req, res) => {
   user.passwordChangedAt = new Date();
   user.tokenVersion += 1; // signs out every other session
   await user.save();
-  issueSession(res, user);
+  const token = issueSession(res, user, req);
   await audit(req, 'PASSWORD_CHANGED');
-  res.json({ user: publicUser(user) });
+  res.json({ user: publicUser(user), token });
 });

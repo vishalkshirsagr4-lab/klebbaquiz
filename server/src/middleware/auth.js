@@ -47,8 +47,22 @@ const requirePasswordChanged = (req, _res, next) => {
 const csrfGuard = (req, _res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   const origin = req.get('origin');
-  if (origin && !env.clientOrigins.includes(origin.replace(/\/$/, ''))) {
-    return next(new ApiError(403, 'Request origin not allowed', 'BAD_ORIGIN'));
+  if (origin) {
+    const originHost = origin.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const reqHost = (req.get('host') || '').replace(/\/$/, '');
+    const isAllowedOrigin =
+      env.clientOrigins.some((o) => o.replace(/^https?:\/\//, '').replace(/\/$/, '') === originHost) ||
+      originHost === reqHost ||
+      originHost.endsWith('.vercel.app') ||
+      originHost.endsWith('.onrender.com') ||
+      originHost.endsWith('.run.app') ||
+      originHost.endsWith('.google.com') ||
+      originHost.includes('localhost') ||
+      originHost.includes('127.0.0.1');
+
+    if (!isAllowedOrigin && !env.clientOrigins.includes(origin.replace(/\/$/, ''))) {
+      return next(new ApiError(403, 'Request origin not allowed', 'BAD_ORIGIN'));
+    }
   }
   if (req.get('x-requested-with') !== 'quizmaster' && !req.get('authorization')) {
     return next(new ApiError(403, 'Missing request header', 'CSRF'));
