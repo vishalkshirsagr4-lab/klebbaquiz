@@ -16,7 +16,7 @@ async function connectDB() {
     maxPoolSize: 20,
     autoIndex: !env.isProd || process.env.AUTO_INDEX === 'true',
   });
-  console.log('[mongo] connected');
+  // console.log('[mongo] connected');
 }
 
 module.exports = connectDB;
