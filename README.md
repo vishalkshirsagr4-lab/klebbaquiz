@@ -212,3 +212,4 @@ See [`server/.env.example`](server/.env.example) — every variable is documente
 - The expired-attempt sweeper runs inside the API process. It is safe with multiple instances (atomic transitions) but not needed more than once.
 - Leaderboards compute on request; for very large competitions (10k+ participants) cache them after release.
 # KLE-BBA-CLUSTER-EVENT-QUIZMASTER
+# klebbaquiz
