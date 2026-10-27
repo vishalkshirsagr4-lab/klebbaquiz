@@ -27,8 +27,8 @@ export default function AuditLog() {
       {data && data.items.length > 0 && (
         <>
           <TableWrap>
-            <thead className="bg-slate-50"><tr><th className="th">When</th><th className="th">Action</th><th className="th">Actor</th><th className="th hidden lg:table-cell">Details</th><th className="th hidden md:table-cell">IP</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">
+            <thead className="bg-slate-50 dark:bg-slate-800"><tr><th className="th">When</th><th className="th">Action</th><th className="th">Actor</th><th className="th hidden lg:table-cell">Details</th><th className="th hidden md:table-cell">IP</th></tr></thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {data.items.map((l) => (
                 <tr key={l.id}>
                   <td className="td whitespace-nowrap">{fmtDateTime(l.createdAt)}</td>

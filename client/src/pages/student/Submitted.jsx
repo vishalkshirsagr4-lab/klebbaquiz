@@ -1,9 +1,9 @@
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Clock, Hash, Home, ListChecks, Timer } from 'lucide-react';
+import { CheckCircle2, Clock, Hash, Home, ListChecks, Timer, Copy } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { useFetch } from '../../lib/hooks.js';
 import { fmtDateTime } from '../../lib/format.js';
-import { Alert, Button, Card, ErrorState, PageLoader } from '../../components/ui.jsx';
+import { Alert, Button, Card, CopyButton, ErrorState, PageLoader } from '../../components/ui.jsx';
 
 export default function Submitted() {
   const { id } = useParams();
@@ -20,12 +20,14 @@ export default function Submitted() {
 
   return (
     <div className="mx-auto max-w-xl animate-fade-up">
-      <Card className="overflow-hidden text-center">
+      <Card className="overflow-hidden text-center shadow-lift">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 px-6 py-10 text-white">
-          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 ring-8 ring-white/10">
+          <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 ring-8 ring-white/10 shadow-sm">
             <CheckCircle2 className="h-9 w-9" aria-hidden />
           </span>
-          <h1 className="mt-5 text-2xl font-extrabold !text-white sm:text-3xl">{auto ? 'Time is up - submitted!' : admin ? 'Attempt submitted' : 'Submission received!'}</h1>
+          <h1 className="mt-5 text-2xl font-extrabold !text-white sm:text-3xl">
+            {auto ? 'Time is up - submitted!' : admin ? 'Attempt submitted' : 'Submission received!'}
+          </h1>
           <p className="mt-2 text-emerald-50">{data.competitionTitle}</p>
         </div>
 
@@ -40,31 +42,34 @@ export default function Submitted() {
               [Clock, 'Submitted at', fmtDateTime(data.submittedAt)],
               [Timer, 'Method', auto ? 'Automatic' : admin ? 'By organiser' : 'Manual'],
             ].map(([Icon, label, value, extra]) => (
-              <div key={label} className="rounded-xl bg-slate-50 p-3.5">
-                <dt className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <div key={label} className="rounded-xl bg-slate-50 p-3.5 dark:bg-slate-800/80">
+                <dt className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
                   <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
                 </dt>
-                <dd className={`mt-1 text-sm font-bold text-slate-900 ${extra || ''}`}>{value}</dd>
+                <dd className={`mt-1 text-sm font-bold text-slate-900 dark:text-white ${extra || ''}`}>
+                  {value}
+                  {label === 'Receipt' && <CopyButton text={value} className="ml-1.5" />}
+                </dd>
               </div>
             ))}
           </dl>
 
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {data.resultsReleased
-              ? 'Your results are available now.'
+              ? 'Your results and performance breakdown are available now.'
               : data.resultsScheduledAt
                 ? `Results are scheduled to be published on ${fmtDateTime(data.resultsScheduledAt)}.`
-                : 'Your score is hidden until the organiser publishes the results. Keep your receipt number for reference.'}
+                : 'Your score is sealed until the organiser publishes the results. Save your receipt code for reference.'}
           </p>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-center pt-2">
             {data.resultsReleased && (
               <Link to={`/competitions/${id}/result`}>
-                <Button className="w-full">View my result</Button>
+                <Button className="w-full sm:w-auto">View my result</Button>
               </Link>
             )}
             <Link to="/">
-              <Button variant="secondary" icon={Home} className="w-full">
+              <Button variant="secondary" icon={Home} className="w-full sm:w-auto">
                 Back to dashboard
               </Button>
             </Link>

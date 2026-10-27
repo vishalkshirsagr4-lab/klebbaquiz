@@ -38,7 +38,7 @@ export function Countdown({ target, offset = 0, onDone, className }) {
 
 export function BackLink({ to, children }) {
   return (
-    <Link to={to} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900">
+    <Link to={to} className="mb-4 inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
       <ArrowLeft className="h-4 w-4" aria-hidden /> {children}
     </Link>
   );
@@ -48,11 +48,11 @@ export function BackLink({ to, children }) {
 export function GateNotice({ icon: Icon = Clock, title, children, action }) {
   return (
     <div className="card mx-auto max-w-xl px-6 py-14 text-center">
-      <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600">
+      <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950/80 dark:text-amber-400">
         <Icon className="h-7 w-7" aria-hidden />
       </div>
-      <h2 className="text-xl font-extrabold">{title}</h2>
-      <div className="mx-auto mt-2 max-w-sm text-sm text-slate-500">{children}</div>
+      <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{title}</h2>
+      <div className="mx-auto mt-2 max-w-sm text-sm text-slate-500 dark:text-slate-400">{children}</div>
       {action && <div className="mt-6 flex justify-center gap-2">{action}</div>}
     </div>
   );
@@ -71,7 +71,7 @@ export function ScoreRing({ percent, size = 168, children }) {
             <stop offset="100%" stopColor="#7c3aed" />
           </linearGradient>
         </defs>
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#e2e8f0" strokeWidth="10" />
+        <circle cx="60" cy="60" r={r} fill="none" className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="10" />
         <circle cx="60" cy="60" r={r} fill="none" stroke="url(#ring)" strokeWidth="10" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
       </svg>
       <div className="relative text-center">{children}</div>

@@ -4,7 +4,7 @@ import { Check, Circle, KeyRound } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { Alert, Button, Card, Field, Input, Logo, cx } from '../components/ui.jsx';
+import { Alert, Button, Card, Field, Input, Logo, ThemeToggle, cx } from '../components/ui.jsx';
 
 const rules = [
   ['At least 10 characters', (p) => p.length >= 10],
@@ -44,16 +44,22 @@ export default function ChangePassword() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-10">
-      <Logo className="mb-8 justify-center" />
-      <Card className="animate-fade-up p-6 sm:p-8">
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-10 animate-fade-up">
+      <div className="mb-6 flex items-center justify-between">
+        <Logo />
+        <ThemeToggle />
+      </div>
+
+      <Card className="p-6 sm:p-8">
         <div className="mb-6 flex items-start gap-4">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-950/80 dark:text-brand-300">
             <KeyRound className="h-6 w-6" aria-hidden />
           </span>
           <div>
-            <h1 className="text-xl font-extrabold">{forced ? 'Set your own password' : 'Change password'}</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <h1 className="text-xl font-extrabold text-slate-900 dark:text-white">
+              {forced ? 'Set your own password' : 'Change password'}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {forced ? 'You are using a temporary password. Choose a new one to continue.' : 'Choose a strong password you do not use elsewhere.'}
             </p>
           </div>
@@ -71,7 +77,7 @@ export default function ChangePassword() {
             {rules.map(([label, f]) => {
               const ok = f(next);
               return (
-                <li key={label} className={cx('flex items-center gap-2 text-xs font-medium', ok ? 'text-emerald-600' : 'text-slate-400')}>
+                <li key={label} className={cx('flex items-center gap-2 text-xs font-medium', ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500')}>
                   {ok ? <Check className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />} {label}
                 </li>
               );
@@ -87,11 +93,11 @@ export default function ChangePassword() {
 
         <div className="mt-6 text-center text-sm">
           {forced ? (
-            <button className="font-semibold text-slate-500 hover:text-slate-700" onClick={async () => { await logout(); navigate('/login'); }}>
+            <button className="font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" onClick={async () => { await logout(); navigate('/login'); }}>
               Sign out instead
             </button>
           ) : (
-            <Link to={user.role === 'admin' ? '/admin' : '/'} className="font-semibold text-slate-500 hover:text-slate-700">
+            <Link to={user.role === 'admin' ? '/admin' : '/'} className="font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
               Cancel
             </Link>
           )}

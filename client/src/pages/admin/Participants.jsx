@@ -39,10 +39,10 @@ function CredentialsModal({ credentials, onClose }) {
       <Alert tone="warning" title="Shown only once">
         Temporary passwords are stored hashed and cannot be viewed again. Share them securely - participants must set their own password at first sign-in.
       </Alert>
-      <div className="mt-4 overflow-x-auto rounded-xl ring-1 ring-slate-200">
-        <table className="min-w-full divide-y divide-slate-100 text-sm">
-          <thead className="bg-slate-50"><tr><th className="th">Name</th><th className="th">Participant ID</th><th className="th">Temporary password</th></tr></thead>
-          <tbody className="divide-y divide-slate-100">
+      <div className="mt-4 overflow-x-auto rounded-xl ring-1 ring-slate-200 dark:ring-slate-800">
+        <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-800"><tr><th className="th">Name</th><th className="th">Participant ID</th><th className="th">Temporary password</th></tr></thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {rows.map((r) => (
               <tr key={r.participantId}>
                 <td className="td font-semibold text-slate-900">{r.name}</td>
@@ -224,7 +224,7 @@ export default function Participants() {
       {data && data.items.length > 0 && (
         <>
           <TableWrap>
-            <thead className="bg-slate-50">
+            <thead className="bg-slate-50 dark:bg-slate-800">
               <tr>
                 <th className="th">Participant</th>
                 <th className="th">ID</th>
@@ -234,12 +234,12 @@ export default function Participants() {
                 <th className="th text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {data.items.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/60">
+                <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                   <td className="td">
-                    <p className="font-semibold text-slate-900">{u.name}</p>
-                    {u.email && <p className="text-xs text-slate-500">{u.email}</p>}
+                    <p className="font-semibold text-slate-900 dark:text-white">{u.name}</p>
+                    {u.email && <p className="text-xs text-slate-500 dark:text-slate-400">{u.email}</p>}
                   </td>
                   <td className="td font-mono text-xs">{u.participantId}</td>
                   <td className="td hidden md:table-cell">{u.organization || '-'}</td>
