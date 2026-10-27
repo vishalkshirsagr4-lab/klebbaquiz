@@ -58,8 +58,8 @@ async function refreshStats(competitionId) {
 async function eligibleUsers(comp) {
   const filter =
     comp.visibility === 'all'
-      ? { role: 'student', isActive: true }
-      : { role: 'student', _id: { $in: comp.assignedParticipants || [] } };
+      ? { role: { $in: ['student', 'leader', 'member'] }, isActive: true }
+      : { role: { $in: ['student', 'leader', 'member'] }, _id: { $in: comp.assignedParticipants || [] } };
   return User.find(filter).select('name participantId email isActive').lean();
 }
 

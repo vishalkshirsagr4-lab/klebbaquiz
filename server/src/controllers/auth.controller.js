@@ -8,27 +8,58 @@ const { issueSession, clearSession } = require('../utils/token');
 // Used to keep response time constant when the account does not exist
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', env.BCRYPT_ROUNDS);
 
-const publicUser = (u) => ({
-  id: String(u._id),
-  name: u.name,
-  role: u.role,
-  participantId: u.participantId,
-  username: u.username,
-  email: u.email,
-  organization: u.organization,
-  mustChangePassword: u.mustChangePassword,
-  lastLoginAt: u.lastLoginAt,
-});
+const publicUser = (u) => {
+  const teamObj =
+    u.team && typeof u.team === 'object' && u.team._id
+      ? {
+          id: String(u.team._id),
+          name: u.team.name,
+          code: u.team.code,
+          isActive: u.team.isActive,
+          maxMembers: u.team.maxMembers,
+          competition: u.team.competition,
+        }
+      : u.team
+      ? { id: String(u.team) }
+      : null;
+
+  return {
+    id: String(u._id),
+    name: u.name,
+    role: u.role,
+    teamRole: u.teamRole || (u.role === 'leader' ? 'leader' : u.role === 'member' ? 'member' : 'individual'),
+    team: teamObj,
+    participantId: u.participantId,
+    username: u.username,
+    email: u.email,
+    organization: u.organization,
+    mustChangePassword: u.mustChangePassword,
+    lastLoginAt: u.lastLoginAt,
+  };
+};
 
 exports.login = asyncHandler(async (req, res) => {
   const { identifier, password } = req.body;
-  // participant ID (QM-XXXXXX), admin username, or email - exact matches only
-  const query = { $or: [{ participantId: identifier.toUpperCase() }, { username: identifier.toLowerCase() }, { email: identifier.toLowerCase() }] };
-  const user = await User.findOne(query).select('+passwordHash');
+  // participant ID (QM-XXXXXX or KLE26-...), admin username, or email - exact matches only
+  const query = {
+    $or: [
+      { participantId: identifier.toUpperCase() },
+      { username: identifier.toLowerCase() },
+      { email: identifier.toLowerCase() },
+    ],
+  };
+
+  const user = await User.findOne(query)
+    .select('+passwordHash')
+    .populate('team', 'name code isActive maxMembers competition');
 
   if (user?.lockUntil && user.lockUntil > new Date()) {
     await audit(req, 'LOGIN_BLOCKED_LOCKED', { actor: user, actorLabel: identifier });
-    throw new ApiError(423, 'Too many failed attempts. This account is temporarily locked - try again later.', 'ACCOUNT_LOCKED');
+    throw new ApiError(
+      423,
+      'Too many failed attempts. This account is temporarily locked - try again later.',
+      'ACCOUNT_LOCKED'
+    );
   }
 
   const ok = await bcrypt.compare(password, user ? user.passwordHash : DUMMY_HASH);
@@ -42,7 +73,11 @@ exports.login = asyncHandler(async (req, res) => {
       }
       await User.updateOne({ _id: user._id }, { $set: set });
     }
-    await audit(req, 'LOGIN_FAILED', { actor: user || undefined, actorLabel: identifier, meta: { knownAccount: Boolean(user) } });
+    await audit(req, 'LOGIN_FAILED', {
+      actor: user || undefined,
+      actorLabel: identifier,
+      meta: { knownAccount: Boolean(user) },
+    });
     throw new ApiError(401, 'Incorrect ID or password', 'INVALID_CREDENTIALS');
   }
 
@@ -53,6 +88,7 @@ exports.login = asyncHandler(async (req, res) => {
   const lastLoginAt = new Date();
   await User.updateOne({ _id: user._id }, { $set: { failedLoginCount: 0, lastLoginAt }, $unset: { lockUntil: 1 } });
   user.lastLoginAt = lastLoginAt;
+
   const token = issueSession(res, user, req);
   await audit(req, 'LOGIN_SUCCESS', { actor: user });
   res.json({ user: publicUser(user), token });

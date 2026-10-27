@@ -1,11 +1,13 @@
 const Competition = require('../models/Competition');
 const Question = require('../models/Question');
 const Attempt = require('../models/Attempt');
+const Announcement = require('../models/Announcement');
+const Team = require('../models/Team');
 const audit = require('../services/audit');
 const env = require('../config/env');
 const { getPhase, isReleased, releaseState, canAccess, allowedAttempts } = require('../services/competition');
 const { finalizeAttempt, finalizeExpired, gradeAnswers } = require('../services/attempts');
-const { computeLeaderboard } = require('../services/leaderboard');
+const { computeLeaderboard, computeTeamLeaderboard } = require('../services/leaderboard');
 const { ApiError, asyncHandler, shuffle } = require('../utils/helpers');
 
 const graceMs = () => (process.env.SUBMIT_GRACE_SECONDS !== undefined ? Number(process.env.SUBMIT_GRACE_SECONDS) : env.SUBMIT_GRACE_SECONDS) * 1000;
@@ -24,7 +26,14 @@ function lobbyShape(comp, userId, attempts, now = new Date()) {
   const allowed = allowedAttempts(comp, userId);
   const results = releaseState(comp, 'results', now);
   const answers = releaseState(comp, 'answers', now);
-  const best = results.released ? [...finished].sort((a, b) => b.score - a.score)[0] : null;
+  const best = results.released
+    ? [...finished].sort((a, b) => {
+        const sa = a.scoreCorrection?.correctedScore !== undefined ? a.scoreCorrection.correctedScore : a.score;
+        const sb = b.scoreCorrection?.correctedScore !== undefined ? b.scoreCorrection.correctedScore : b.score;
+        return sb - sa;
+      })[0]
+    : null;
+  const bestScoreVal = best ? (best.scoreCorrection?.correctedScore !== undefined ? best.scoreCorrection.correctedScore : best.score) : null;
 
   return {
     id: String(comp._id),
@@ -48,7 +57,7 @@ function lobbyShape(comp, userId, attempts, now = new Date()) {
     answersReleased: answers.released,
     resultsScheduledAt: !results.released ? results.scheduledAt : null,
     answersScheduledAt: !answers.released ? answers.scheduledAt : null,
-    myScore: best ? { score: best.score, maxScore: best.maxScore } : null,
+    myScore: best ? { score: bestScoreVal, maxScore: best.maxScore } : null,
   };
 }
 
@@ -321,15 +330,53 @@ exports.myResult = asyncHandler(async (req, res) => {
   const comp = await loadAccessible(req);
   await releasedOr403(comp, 'results');
   const attempt = await bestOwnAttempt(comp, req.user._id);
-  const board = await computeLeaderboard(comp._id);
+  const [board, teamBoard, ann] = await Promise.all([
+    computeLeaderboard(comp._id),
+    computeTeamLeaderboard(comp._id),
+    Announcement.findOne({ competition: comp._id, status: 'published' }).lean(),
+  ]);
+
   const mine = board.find((r) => String(r.userId) === String(req.user._id));
+  const effectiveScore = attempt.scoreCorrection?.correctedScore !== undefined ? attempt.scoreCorrection.correctedScore : attempt.score;
+
+  // Check if student belongs to a team
+  let myTeamInfo = null;
+  if (req.user.team) {
+    const t = teamBoard.find((tb) => String(tb.teamId) === String(req.user.team));
+    if (t) {
+      myTeamInfo = {
+        teamId: t.teamId,
+        teamName: t.teamName,
+        teamCode: t.teamCode,
+        rank: t.rank,
+        isTie: t.isTie,
+        score: t.score,
+        totalScore: t.totalScore,
+        membersCount: t.membersCount,
+      };
+    }
+  }
+
   res.json({
     competition: { id: String(comp._id), title: comp.title, showLeaderboard: comp.showLeaderboard, answersReleased: isReleased(comp, 'answers') },
+    announcement: ann
+      ? {
+          title: ann.title,
+          message: ann.message,
+          category: ann.category,
+          publishedAt: ann.publishedAt,
+          revision: ann.revision,
+          highlights: ann.highlights || [],
+        }
+      : null,
+    myTeam: myTeamInfo,
     result: {
       attemptNumber: attempt.attemptNumber,
-      score: attempt.score,
+      score: effectiveScore,
+      rawScore: attempt.score,
+      isCorrected: attempt.scoreCorrection?.correctedScore !== undefined,
       maxScore: attempt.maxScore,
-      percentage: attempt.maxScore ? Math.round((attempt.score / attempt.maxScore) * 10000) / 100 : 0,
+      percentage: attempt.maxScore ? Math.round((effectiveScore / attempt.maxScore) * 10000) / 100 : 0,
       correct: attempt.correctCount,
       wrong: attempt.wrongCount,
       unanswered: attempt.unansweredCount,
@@ -337,6 +384,7 @@ exports.myResult = asyncHandler(async (req, res) => {
       submittedAt: attempt.submittedAt,
       status: attempt.status,
       rank: comp.showLeaderboard ? mine?.rank ?? null : null,
+      isTie: mine?.isTie || false,
       totalParticipants: comp.showLeaderboard ? board.length : null,
     },
   });

@@ -41,9 +41,33 @@ const attemptSchema = new Schema(
 
     ip: { type: String },
     userAgent: { type: String, maxlength: 300 },
+
+    // Audited score corrections
+    scoreCorrection: {
+      originalScore: { type: Number },
+      correctedScore: { type: Number },
+      reason: { type: String, trim: true, maxlength: 500 },
+      correctedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      correctedAt: { type: Date },
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: {
+      virtuals: true,
+      transform(_doc, ret) {
+        ret.id = String(ret._id);
+        delete ret._id;
+        delete ret.__v;
+        return ret;
+      },
+    },
+  }
 );
+
+attemptSchema.virtual('officialScore').get(function () {
+  return this.scoreCorrection?.correctedScore !== undefined ? this.scoreCorrection.correctedScore : this.score;
+});
 
 attemptSchema.index({ competition: 1, user: 1, attemptNumber: 1 }, { unique: true });
 // At most one live attempt per participant per competition (prevents duplicate parallel starts)

@@ -8,6 +8,7 @@ const requireAuth = asyncHandler(async (req, _res, next) => {
   let token = req.cookies?.[COOKIE_NAME];
   const header = req.get('authorization');
   if (!token && header?.startsWith('Bearer ')) token = header.slice(7);
+
   if (!token) throw new ApiError(401, 'Please sign in to continue', 'UNAUTHENTICATED');
 
   let payload;
@@ -17,11 +18,12 @@ const requireAuth = asyncHandler(async (req, _res, next) => {
     throw new ApiError(401, 'Your session has expired. Please sign in again.', 'SESSION_EXPIRED');
   }
 
-  const user = await User.findById(payload.sub);
+  const user = await User.findById(payload.sub).populate('team', 'name code isActive maxMembers competition');
   // tokenVersion changes on password change / reset / deactivation => old tokens die immediately
   if (!user || !user.isActive || user.tokenVersion !== payload.tv) {
     throw new ApiError(401, 'Your session is no longer valid. Please sign in again.', 'SESSION_EXPIRED');
   }
+
   req.user = user;
   next();
 });
@@ -46,6 +48,7 @@ const requirePasswordChanged = (req, _res, next) => {
 /** CSRF defence for cookie auth: custom header (forces CORS preflight) + Origin allow-list. */
 const csrfGuard = (req, _res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+
   const origin = req.get('origin');
   if (origin) {
     const originHost = origin.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -64,6 +67,7 @@ const csrfGuard = (req, _res, next) => {
       return next(new ApiError(403, 'Request origin not allowed', 'BAD_ORIGIN'));
     }
   }
+
   if (req.get('x-requested-with') !== 'quizmaster' && !req.get('authorization')) {
     return next(new ApiError(403, 'Missing request header', 'CSRF'));
   }

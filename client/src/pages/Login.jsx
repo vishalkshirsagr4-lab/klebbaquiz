@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ShieldCheck, Timer, Trophy, Lock, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, Timer, Trophy, Lock, Sparkles, Users2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Alert, Button, Field, Input, Logo, ThemeToggle } from '../components/ui.jsx';
 
@@ -8,6 +8,7 @@ export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
@@ -16,7 +17,15 @@ export default function Login() {
 
   if (user) {
     if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
-    return <Navigate to={location.state?.from || (user.role === 'admin' ? '/admin' : '/')} replace />;
+    return (
+      <Navigate
+        to={
+          location.state?.from ||
+          (user.role === 'admin' ? '/admin' : user.role === 'leader' ? '/leader' : '/')
+        }
+        replace
+      />
+    );
   }
 
   async function submit(e) {
@@ -25,7 +34,16 @@ export default function Login() {
     setBusy(true);
     try {
       const u = await login(identifier.trim(), password);
-      navigate(u.mustChangePassword ? '/change-password' : u.role === 'admin' ? '/admin' : '/', { replace: true });
+      navigate(
+        u.mustChangePassword
+          ? '/change-password'
+          : u.role === 'admin'
+          ? '/admin'
+          : u.role === 'leader'
+          ? '/leader'
+          : '/',
+        { replace: true }
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,25 +57,29 @@ export default function Login() {
       <section className="relative hidden overflow-hidden bg-gradient-to-br from-brand-700 via-brand-600 to-violet-800 p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-violet-400/20 blur-3xl" />
+
         <div className="relative flex items-center justify-between">
           <Logo light />
           <ThemeToggle className="!bg-white/10 !border-white/20 !text-white hover:!bg-white/20" />
         </div>
+
         <div className="relative max-w-lg">
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold tracking-wide backdrop-blur-sm">
-            <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Secure Competition Engine
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold tracking-wide backdrop-blur-sm">
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" /> KLE BBA Cluster Event 2026
           </div>
           <h1 className="mt-4 text-4xl font-extrabold leading-tight !text-white xl:text-5xl">
-            Fair, secure quiz competitions.
+            QuizMaster Competition Platform
           </h1>
           <p className="mt-4 text-lg text-brand-100">
-            Every deadline is enforced on the server. Every score is calculated securely. Correct answers stay sealed until the organiser releases them.
+            Fair, server-timed quiz competitions for inter-college cluster teams and participants.
           </p>
+
           <ul className="mt-10 space-y-5">
             {[
+              [Users2, 'Team & Individual Management', 'Auto-generated team codes, leader designations, and member credentials.'],
               [Timer, 'Server-timed attempts', 'Resume safely after a disconnect - the clock never lies.'],
               [ShieldCheck, 'Sealed answer keys', 'Correct answers never reach the browser before official release.'],
-              [Trophy, 'Live leaderboards & instant analytics', 'Ranked by score, then speed, once results are published.'],
+              [Trophy, 'Live leaderboards & instant scoring', 'Ranked by score, then speed, once results are published.'],
             ].map(([Icon, t, d]) => (
               <li key={t} className="flex gap-4">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20">
@@ -71,7 +93,10 @@ export default function Login() {
             ))}
           </ul>
         </div>
-        <p className="relative text-sm text-brand-200">Accounts are issued by your institution or tournament organiser.</p>
+
+        <p className="relative text-sm text-brand-200">
+          Official competition credentials are provided privately by the event organizers.
+        </p>
       </section>
 
       {/* Login Form Column */}
@@ -82,23 +107,29 @@ export default function Login() {
         </div>
 
         <div className="mx-auto w-full max-w-md animate-fade-up my-auto">
-          <h2 className="text-2xl font-extrabold sm:text-3xl text-slate-900 dark:text-white">Welcome back</h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Sign in with the credentials issued by your organiser.</p>
+          <h2 className="text-2xl font-extrabold sm:text-3xl text-slate-900 dark:text-white">
+            Participant &amp; Admin Sign In
+          </h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Enter your login ID or team credentials issued by the organizers.
+          </p>
 
           <form onSubmit={submit} className="mt-8 space-y-4" noValidate>
             {error && <Alert tone="error">{error}</Alert>}
-            <Field label="Participant ID, username or email">
+
+            <Field label="Login ID, Team ID, or Username">
               <Input
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 autoComplete="username"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="QM-7K3X9P"
+                placeholder="e.g. KLE26-T001-L01, QM-XXXXXX, or admin"
                 required
                 autoFocus
               />
             </Field>
+
             <Field label="Password">
               <div className="relative">
                 <Input
@@ -106,7 +137,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
-                  placeholder="Enter your password"
+                  placeholder="Enter your assigned password"
                   className="pr-11"
                   required
                 />
@@ -120,8 +151,9 @@ export default function Login() {
                 </button>
               </div>
             </Field>
+
             <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!identifier || !password}>
-              Sign in
+              Sign In
             </Button>
           </form>
 
@@ -131,7 +163,7 @@ export default function Login() {
         </div>
 
         <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
-          QuizMaster Competition System
+          KLE BBA Cluster Event Quizmaster · All rights reserved
         </div>
       </section>
     </div>

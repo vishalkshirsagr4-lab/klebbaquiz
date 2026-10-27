@@ -1,14 +1,30 @@
 import { useState } from 'react';
 import { NavLink, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Trophy, ScrollText, LogOut, Menu, X, KeyRound, GraduationCap, Home, Eye
+  LayoutDashboard,
+  Users,
+  Users2,
+  Trophy,
+  ScrollText,
+  LogOut,
+  Menu,
+  X,
+  KeyRound,
+  GraduationCap,
+  Home,
+  Eye,
+  Crown,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Logo, ThemeToggle, cx } from './ui.jsx';
+import { NotificationBell } from './NotificationBell.jsx';
 
 const adminNav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/competitions', label: 'Competitions', icon: Trophy },
+  { to: '/admin/teams', label: 'Teams (KLE26)', icon: Users2 },
+  { to: '/admin/results', label: 'Results & Publishing', icon: Award },
   { to: '/admin/participants', label: 'Participants', icon: Users },
   { to: '/admin/audit', label: 'Audit log', icon: ScrollText },
 ];
@@ -26,8 +42,17 @@ function UserChip({ user }) {
         {initials}
       </span>
       <div className="min-w-0 leading-tight">
-        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.participantId || user.username || user.email}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
+          {user.team && (
+            <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700 dark:bg-brand-950 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+              {user.team.name || 'Team'}
+            </span>
+          )}
+        </div>
+        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+          {user.participantId || user.username || user.email}
+        </p>
       </div>
     </div>
   );
@@ -59,6 +84,7 @@ export function AdminLayout() {
           {n.label}
         </NavLink>
       ))}
+
       <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
         <Link
           to="/"
@@ -160,21 +186,34 @@ export function StudentLayout() {
           <Link to="/" aria-label="QuizMaster home" className="hover:opacity-90 transition">
             <Logo />
           </Link>
+
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden sm:block">
               <UserChip user={user} />
             </div>
+
+            <NotificationBell />
             <ThemeToggle />
+
+            {user.role === 'leader' && (
+              <Link to="/leader" className="btn btn-soft btn-sm" title="Team Leader Console">
+                <Crown className="h-4 w-4 text-amber-500" />
+                <span className="hidden md:inline">Team Console</span>
+              </Link>
+            )}
+
             <Link to="/change-password" className="btn btn-ghost btn-sm" title="Change password">
               <KeyRound className="h-4 w-4" />
               <span className="hidden md:inline">Password</span>
             </Link>
+
             {user.role === 'admin' && (
               <Link to="/admin" className="btn btn-soft btn-sm" title="Back to Admin Console">
                 <LayoutDashboard className="h-4 w-4" />
                 <span className="hidden md:inline">Admin</span>
               </Link>
             )}
+
             <button
               className="btn btn-secondary btn-sm"
               onClick={async () => {
@@ -194,7 +233,7 @@ export function StudentLayout() {
       </main>
 
       <footer className="mx-auto max-w-6xl px-4 pb-10 text-center text-xs text-slate-400 dark:text-slate-500 sm:px-6">
-        <GraduationCap className="mx-auto mb-1 h-4 w-4" aria-hidden /> QuizMaster Online Competitions · Server-timed &amp; Secure
+        <GraduationCap className="mx-auto mb-1 h-4 w-4" aria-hidden /> KLE BBA Cluster Event · QuizMaster Online Competitions · Server-timed &amp; Secure
       </footer>
 
       {/* Mobile Bottom Navigation Bar for Student */}
@@ -212,6 +251,20 @@ export function StudentLayout() {
           <Home className="h-5 w-5" />
           <span>Home</span>
         </Link>
+
+        {user.role === 'leader' && (
+          <Link
+            to="/leader"
+            className={cx(
+              'flex flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-semibold transition',
+              location.pathname === '/leader' ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            )}
+          >
+            <Crown className="h-5 w-5 text-amber-500" />
+            <span>Team</span>
+          </Link>
+        )}
+
         <Link
           to="/change-password"
           className={cx(
@@ -222,6 +275,7 @@ export function StudentLayout() {
           <KeyRound className="h-5 w-5" />
           <span>Password</span>
         </Link>
+
         {user.role === 'admin' ? (
           <Link
             to="/admin"
@@ -236,6 +290,7 @@ export function StudentLayout() {
             <span className="text-emerald-600 font-bold">Active</span>
           </div>
         )}
+
         <button
           onClick={async () => {
             await logout();

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Pencil, Trash2, Plus, Eye, ListChecks, Settings2, Activity, BarChart3, Users, Download, Upload, Send, Archive, CalendarClock, EyeOff, RefreshCw, Rocket, ShieldAlert,
+  ArrowLeft, Pencil, Trash2, Plus, Eye, ListChecks, Settings2, Activity, BarChart3, Users, Download, Upload, Send, Archive, CalendarClock, EyeOff, RefreshCw, Rocket, ShieldAlert, Award,
 } from 'lucide-react';
 import { api, downloadFile, qs } from '../../lib/api.js';
 import { useFetch } from '../../lib/hooks.js';
@@ -820,7 +820,16 @@ function ResultsTab({ comp, onChanged }) {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Rankings (best attempt)</h2>
-        <Button icon={Download} onClick={exportCsv} loading={exporting}>Export CSV</Button>
+        <div className="flex items-center gap-2">
+          <Link to={`/admin/results?competitionId=${comp.id}`}>
+            <Button variant="primary" icon={Award}>
+              Official Publishing &amp; Announcements Console
+            </Button>
+          </Link>
+          <Button icon={Download} variant="secondary" onClick={exportCsv} loading={exporting}>
+            Export CSV
+          </Button>
+        </div>
       </div>
       {error && <ErrorState error={error} onRetry={reload} />}
       {loading && !data && <Skeleton className="h-48" />}

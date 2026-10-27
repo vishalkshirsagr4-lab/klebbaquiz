@@ -8,10 +8,14 @@ import ChangePassword from './pages/ChangePassword.jsx';
 
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard.jsx'));
 const Participants = lazy(() => import('./pages/admin/Participants.jsx'));
+const AdminTeams = lazy(() => import('./pages/admin/Teams.jsx'));
+const AdminResults = lazy(() => import('./pages/admin/Results.jsx'));
 const Competitions = lazy(() => import('./pages/admin/Competitions.jsx'));
 const CompetitionForm = lazy(() => import('./pages/admin/CompetitionForm.jsx'));
 const CompetitionManage = lazy(() => import('./pages/admin/CompetitionManage.jsx'));
 const AuditLog = lazy(() => import('./pages/admin/AuditLog.jsx'));
+
+const LeaderDashboard = lazy(() => import('./pages/leader/Dashboard.jsx'));
 
 const StudentDashboard = lazy(() => import('./pages/student/Dashboard.jsx'));
 const Lobby = lazy(() => import('./pages/student/Lobby.jsx'));
@@ -21,13 +25,21 @@ const Result = lazy(() => import('./pages/student/Result.jsx'));
 const Review = lazy(() => import('./pages/student/Review.jsx'));
 const Leaderboard = lazy(() => import('./pages/student/Leaderboard.jsx'));
 
-function Guard({ role, children }) {
+function Guard({ role, roles, children }) {
   const { user, loading } = useAuth();
   const location = useLocation();
+
   if (loading) return <PageLoader label="Checking your session..." />;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
-  if (role && user.role !== role) return <Navigate to={user.role === 'admin' ? '/admin' : '/'} replace />;
+
+  const allowedRoles = roles || (role ? [role] : null);
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === 'admin') return <Navigate to="/admin" replace />;
+    if (user.role === 'leader') return <Navigate to="/leader" replace />;
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 }
 
@@ -58,10 +70,27 @@ export default function App() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/change-password" element={<AuthOnly><ChangePassword /></AuthOnly>} />
+        <Route
+          path="/change-password"
+          element={
+            <AuthOnly>
+              <ChangePassword />
+            </AuthOnly>
+          }
+        />
 
-        <Route path="/admin" element={<Guard role="admin"><AdminLayout /></Guard>}>
+        {/* Admin Console */}
+        <Route
+          path="/admin"
+          element={
+            <Guard role="admin">
+              <AdminLayout />
+            </Guard>
+          }
+        >
           <Route index element={<AdminDashboard />} />
+          <Route path="teams" element={<AdminTeams />} />
+          <Route path="results" element={<AdminResults />} />
           <Route path="participants" element={<Participants />} />
           <Route path="competitions" element={<Competitions />} />
           <Route path="competitions/new" element={<CompetitionForm />} />
@@ -70,9 +99,37 @@ export default function App() {
           <Route path="audit" element={<AuditLog />} />
         </Route>
 
-        <Route path="/attempt/:attemptId" element={<Guard role="student"><Quiz /></Guard>} />
+        {/* Team Leader Dashboard */}
+        <Route
+          path="/leader"
+          element={
+            <Guard roles={['leader', 'admin']}>
+              <StudentLayout />
+            </Guard>
+          }
+        >
+          <Route index element={<LeaderDashboard />} />
+        </Route>
 
-        <Route path="/" element={<Guard role="student"><StudentLayout /></Guard>}>
+        {/* Quiz Attempt in Progress (FullScreen) */}
+        <Route
+          path="/attempt/:attemptId"
+          element={
+            <Guard roles={['student', 'leader', 'member']}>
+              <Quiz />
+            </Guard>
+          }
+        />
+
+        {/* Student / Participant & Team Members Portal */}
+        <Route
+          path="/"
+          element={
+            <Guard roles={['student', 'leader', 'member']}>
+              <StudentLayout />
+            </Guard>
+          }
+        >
           <Route index element={<StudentDashboard />} />
           <Route path="competitions/:id" element={<Lobby />} />
           <Route path="competitions/:id/submitted" element={<Submitted />} />

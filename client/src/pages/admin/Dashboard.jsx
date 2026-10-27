@@ -1,47 +1,113 @@
 import { Link } from 'react-router-dom';
-import { Users, Trophy, Activity, CheckCircle2, Plus, UserPlus, CalendarClock, Radio, ArrowRight, Shield } from 'lucide-react';
+import {
+  Users,
+  Users2,
+  Trophy,
+  Activity,
+  CheckCircle2,
+  Plus,
+  UserPlus,
+  CalendarClock,
+  Radio,
+  ArrowRight,
+  Shield,
+} from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { useFetch } from '../../lib/hooks.js';
 import { fmtDateTime, relativeFromNow } from '../../lib/format.js';
-import { Button, Card, EmptyState, ErrorState, PageHeader, Skeleton, StatCard } from '../../components/ui.jsx';
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Skeleton,
+  StatCard,
+} from '../../components/ui.jsx';
 
-const actionLabel = (a) => a.replace(/_/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+const actionLabel = (a) =>
+  a
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase());
 
 export default function Dashboard() {
-  const { data, error, loading, reload } = useFetch(() => api.get('/admin/stats'), [], { interval: 30000 });
+  const { data, error, loading, reload } = useFetch(() => api.get('/admin/stats'), [], {
+    interval: 30000,
+  });
 
   return (
     <>
       <PageHeader
         title="Admin Dashboard"
-        subtitle="Live telemetry and management of your quiz competitions and participants."
+        subtitle="Live telemetry and management of KLE BBA Cluster Event competitions, teams, and participants."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Link to="/admin/teams">
+              <Button variant="secondary" icon={Users2}>
+                Manage Teams
+              </Button>
+            </Link>
             <Link to="/admin/participants">
-              <Button variant="secondary" icon={UserPlus}>Add participants</Button>
+              <Button variant="secondary" icon={UserPlus}>
+                Add Participants
+              </Button>
             </Link>
             <Link to="/admin/competitions/new">
-              <Button icon={Plus}>New competition</Button>
+              <Button icon={Plus}>New Competition</Button>
             </Link>
           </div>
         }
       />
 
       {error && <ErrorState error={error} onRetry={reload} />}
+
       {loading && !data && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
       )}
 
       {data && (
         <div className="space-y-8 animate-fade-up">
-          {/* Top 4 KPI Metrics */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Participants" value={data.participants.total} icon={Users} hint={`${data.participants.active} active accounts`} />
-            <StatCard label="Live competitions" value={data.live.length} icon={Radio} tone="green" hint="open for submissions" />
-            <StatCard label="In progress" value={data.attempts.inProgress} icon={Activity} tone="sky" hint="live exam sessions" />
-            <StatCard label="Submitted today" value={data.attempts.submittedToday} icon={CheckCircle2} tone="amber" hint="completed attempts" />
+          {/* Top 5 KPI Metrics */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <StatCard
+              label="Registered Teams"
+              value={data.teams?.total || 0}
+              icon={Users2}
+              tone="brand"
+              hint={`${data.teams?.active || 0} active squads`}
+            />
+            <StatCard
+              label="Participants"
+              value={data.participants.total}
+              icon={Users}
+              hint={`${data.participants.active} active accounts`}
+            />
+            <StatCard
+              label="Live competitions"
+              value={data.live.length}
+              icon={Radio}
+              tone="green"
+              hint="open for submissions"
+            />
+            <StatCard
+              label="In progress"
+              value={data.attempts.inProgress}
+              icon={Activity}
+              tone="sky"
+              hint="live exam sessions"
+            />
+            <StatCard
+              label="Submitted today"
+              value={data.attempts.submittedToday}
+              icon={CheckCircle2}
+              tone="amber"
+              hint="completed attempts"
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
@@ -71,7 +137,9 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <Link to={`/admin/competitions/${c.id}`}>
-                        <Button size="sm" variant="soft">Monitor Live</Button>
+                        <Button size="sm" variant="soft">
+                          Monitor Live
+                        </Button>
                       </Link>
                     </li>
                   ))}
@@ -102,7 +170,9 @@ export default function Dashboard() {
                         </p>
                       </div>
                       <Link to={`/admin/competitions/${c.id}`}>
-                        <Button size="sm" variant="secondary">Manage</Button>
+                        <Button size="sm" variant="secondary">
+                          Manage
+                        </Button>
                       </Link>
                     </li>
                   ))}
@@ -122,7 +192,9 @@ export default function Dashboard() {
                   ].map(([k, v]) => (
                     <div key={k} className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
                       <dd className="text-2xl font-extrabold text-slate-900 dark:text-white tabular-nums">{v}</dd>
-                      <dt className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">{k}</dt>
+                      <dt className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase">
+                        {k}
+                      </dt>
                     </div>
                   ))}
                 </dl>
@@ -139,8 +211,13 @@ export default function Dashboard() {
                 ) : (
                   <ul className="mt-4 space-y-3">
                     {data.recentActivity.slice(0, 5).map((l) => (
-                      <li key={l.id} className="text-xs border-b border-slate-100 pb-2.5 last:border-0 dark:border-slate-800">
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{actionLabel(l.action)}</p>
+                      <li
+                        key={l.id}
+                        className="text-xs border-b border-slate-100 pb-2.5 last:border-0 dark:border-slate-800"
+                      >
+                        <p className="font-bold text-slate-800 dark:text-slate-200">
+                          {actionLabel(l.action)}
+                        </p>
                         <p className="text-slate-500 dark:text-slate-400">
                           {l.actorLabel || 'system'} · {relativeFromNow(l.createdAt)}
                         </p>

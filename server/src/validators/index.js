@@ -36,8 +36,10 @@ const participantBase = {
   email: z.string().trim().toLowerCase().email().max(200).optional().or(z.literal('').transform(() => undefined)),
   organization: optionalText(120),
 };
+
 const createUser = z.object(participantBase);
 const bulkUsers = z.object({ participants: z.array(z.object(participantBase)).min(1).max(50) });
+
 const updateUser = z
   .object({
     name: trimmed(2, 100),
@@ -52,6 +54,50 @@ const listUsersQuery = z.object({
   status: z.enum(['all', 'active', 'inactive']).default('all'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(200).default(20),
+});
+
+/* ---------------- teams ---------------- */
+const memberInput = z.object({
+  userId: objectId.optional(),
+  name: z.string().trim().min(2).max(100).optional(),
+  email: z.string().trim().toLowerCase().email().max(200).optional().or(z.literal('').transform(() => undefined)),
+  organization: optionalText(120),
+}).refine((d) => d.userId || d.name, { message: 'Provide either an existing user ID or student name' });
+
+const createTeam = z.object({
+  name: trimmed(2, 120),
+  code: z.string().trim().toUpperCase().min(3).max(30).optional(),
+  competition: objectId.optional().nullable(),
+  maxMembers: z.coerce.number().int().min(1).max(20).default(4),
+  notes: z.string().trim().max(1000).optional().default(''),
+  isActive: z.boolean().default(true),
+  leader: memberInput,
+  members: z.array(memberInput).default([]),
+});
+
+const updateTeam = z
+  .object({
+    name: trimmed(2, 120),
+    code: z.string().trim().toUpperCase().min(3).max(30),
+    competition: objectId.optional().nullable(),
+    maxMembers: z.coerce.number().int().min(1).max(20),
+    notes: z.string().trim().max(1000),
+    isActive: z.boolean(),
+  })
+  .partial();
+
+const addTeamMembers = z.object({
+  members: z.array(memberInput).min(1).max(20),
+});
+
+const changeLeader = memberInput;
+
+const listTeamsQuery = z.object({
+  q: z.string().trim().max(100).optional(),
+  status: z.enum(['all', 'active', 'inactive']).default('all'),
+  competitionId: z.string().trim().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 /* ---------------- competitions ---------------- */
@@ -69,12 +115,22 @@ const competitionFields = {
   visibility: z.enum(['all', 'assigned']),
   showLeaderboard: z.boolean(),
 };
+
 const createCompetition = z
   .object(competitionFields)
-  .partial({ description: true, instructions: true, negativeMarking: true, shuffleQuestions: true, shuffleOptions: true, maxAttempts: true, visibility: true, showLeaderboard: true })
+  .partial({
+    description: true,
+    instructions: true,
+    negativeMarking: true,
+    shuffleQuestions: true,
+    shuffleOptions: true,
+    maxAttempts: true,
+    visibility: true,
+    showLeaderboard: true,
+  })
   .refine((d) => d.endTime > d.startTime, { message: 'End time must be after start time', path: ['endTime'] });
-const updateCompetition = z.object(competitionFields).partial();
 
+const updateCompetition = z.object(competitionFields).partial();
 const setStatus = z.object({ status: z.enum(['draft', 'published', 'archived']) });
 const assignments = z.object({
   visibility: z.enum(['all', 'assigned']),
@@ -101,6 +157,7 @@ const questionBody = z
     message: 'Options must be different from each other',
     path: ['options'],
   });
+
 const updateQuestion = questionBody;
 const importQuestions = z.object({ questions: z.array(questionBody).min(1).max(300) });
 const reorderQuestions = z.object({ ids: z.array(objectId).min(1).max(500) });
@@ -116,6 +173,7 @@ const attemptsQuery = z.object({
   status: z.enum(['all', 'in_progress', 'submitted', 'not_started']).default('all'),
   q: z.string().trim().max(100).optional(),
 });
+
 const auditQuery = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(30),
@@ -130,6 +188,11 @@ module.exports = {
   bulkUsers,
   updateUser,
   listUsersQuery,
+  createTeam,
+  updateTeam,
+  addTeamMembers,
+  changeLeader,
+  listTeamsQuery,
   createCompetition,
   updateCompetition,
   setStatus,

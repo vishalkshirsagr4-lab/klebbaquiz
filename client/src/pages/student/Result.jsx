@@ -43,7 +43,7 @@ export default function Result() {
   }
   if (error) return <ErrorState error={error} onRetry={reload} />;
 
-  const { competition: c, result: r } = data;
+  const { competition: c, result: r, announcement: ann, myTeam } = data;
   const [label, tone] = verdict(r.percentage);
 
   const handlePrint = () => {
@@ -51,8 +51,72 @@ export default function Result() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl animate-fade-up">
+    <div className="mx-auto max-w-3xl animate-fade-up space-y-6">
       <BackLink to={`/competitions/${id}`}>{c.title}</BackLink>
+
+      {/* Official Announcement Card */}
+      {ann && (
+        <div className="overflow-hidden rounded-2xl border-2 border-brand-500/30 bg-gradient-to-br from-brand-50/80 via-white to-violet-50/50 p-6 shadow-sm dark:border-brand-900 dark:from-slate-900 dark:via-slate-900 dark:to-brand-950/40">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="rounded bg-brand-100 px-2.5 py-0.5 text-xs font-extrabold uppercase tracking-wider text-brand-800 dark:bg-brand-950 dark:text-brand-300">
+              {ann.category} Official Results
+            </span>
+            {ann.publishedAt && (
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                Released {fmtDateTime(ann.publishedAt)}
+              </span>
+            )}
+          </div>
+          <h2 className="mt-2 text-xl font-black text-slate-900 dark:text-white">
+            {ann.title}
+          </h2>
+          {ann.message && (
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              {ann.message}
+            </p>
+          )}
+
+          {/* Winner Highlights if available */}
+          {ann.highlights && ann.highlights.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Championship Top Highlights
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {ann.highlights.slice(0, 3).map((h, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200/80 bg-white/70 p-2.5 text-xs dark:border-slate-800 dark:bg-slate-850">
+                    <span className="font-bold text-brand-600 dark:text-brand-400">#{h.rank} {h.label}</span>
+                    <p className="font-extrabold text-slate-900 dark:text-white truncate mt-0.5">{h.recipient}</p>
+                    <p className="font-mono text-slate-500">{h.score} Pts</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Team Standing Banner if applicable */}
+      {myTeam && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300 font-extrabold text-sm">
+              #{myTeam.rank}
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                Squad Standing: {myTeam.teamName} ({myTeam.teamCode})
+              </p>
+              <p className="text-sm font-extrabold text-slate-900 dark:text-white">
+                Team Official Score: {num(myTeam.score)} Pts {myTeam.isTie && '(Tied)'}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-amber-900/70 dark:text-amber-300/70 sm:text-right">
+            Total Squad Points: {num(myTeam.totalScore)} · {myTeam.membersCount} Members
+          </p>
+        </div>
+      )}
 
       <Card className="overflow-hidden">
         {/* Hero Score Showcase */}
@@ -69,10 +133,11 @@ export default function Result() {
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {c.title}
               {r.attemptNumber > 1 ? ` · attempt #${r.attemptNumber}` : ''}
+              {r.isCorrected && <span className="ml-2 font-bold text-purple-600">(Audited Adjusted)</span>}
             </p>
             {r.rank && (
               <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-100 px-4 py-2 text-sm font-extrabold text-amber-900 dark:bg-amber-950/80 dark:text-amber-200">
-                <Medal className="h-4 w-4" aria-hidden /> Rank #{r.rank} of {r.totalParticipants}
+                <Medal className="h-4 w-4" aria-hidden /> Rank #{r.rank} {r.isTie && '(Tied)'} of {r.totalParticipants}
               </p>
             )}
           </div>

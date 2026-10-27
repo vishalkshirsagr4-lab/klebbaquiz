@@ -1,7 +1,8 @@
+const Attempt = require('../models/Attempt');
 const Competition = require('../models/Competition');
 const Question = require('../models/Question');
-const Attempt = require('../models/Attempt');
 const User = require('../models/User');
+const Team = require('../models/Team');
 const AuditLog = require('../models/AuditLog');
 const audit = require('../services/audit');
 const { getPhase, eligibleUsers } = require('../services/competition');
@@ -10,31 +11,32 @@ const { computeLeaderboard } = require('../services/leaderboard');
 const { ApiError, asyncHandler, escapeRegex, toCSV } = require('../utils/helpers');
 
 const compOr404 = async (id) => {
-  const comp = await Competition.findById(id);
-  if (!comp) throw new ApiError(404, 'Competition not found', 'NOT_FOUND');
-  return comp;
+  const c = await Competition.findById(id);
+  if (!c) throw new ApiError(404, 'Competition not found', 'NOT_FOUND');
+  return c;
 };
 
-/* ------------------------- monitoring ------------------------- */
+/* ------------------------- attempts monitor ------------------------- */
+
 exports.attempts = asyncHandler(async (req, res) => {
   const comp = await compOr404(req.params.id);
   await finalizeExpired({ competition: comp._id });
 
-  const attempts = await Attempt.find({ competition: comp._id })
-    .sort({ startedAt: -1 })
-    .populate('user', 'name participantId email')
-    .lean();
   const eligible = await eligibleUsers(comp);
-  const startedUserIds = new Set(attempts.map((a) => String(a.user?._id)));
+  const attempts = await Attempt.find({ competition: comp._id })
+    .populate('user', 'name participantId email')
+    .sort({ startedAt: -1 })
+    .lean();
 
+  const startedUserIds = new Set(attempts.map((a) => String(a.user?._id)));
   let rows = attempts.map((a) => ({
     id: String(a._id),
     user: a.user ? { id: String(a.user._id), name: a.user.name, participantId: a.user.participantId } : null,
     attemptNumber: a.attemptNumber,
-    status: a.status === 'grading' ? 'in_progress' : a.status,
+    status: a.status,
     startedAt: a.startedAt,
-    deadline: a.deadline,
     submittedAt: a.submittedAt,
+    deadline: a.deadline,
     timeTakenSeconds: a.timeTakenSeconds,
     answered: a.answers.length,
     totalQuestions: a.questionOrder.length,
@@ -60,16 +62,19 @@ exports.attempts = asyncHandler(async (req, res) => {
   else if (status === 'in_progress') rows = rows.filter((r) => r.status === 'in_progress');
   else if (status === 'submitted') rows = rows.filter((r) => r.status !== 'in_progress');
   else rows = [...rows, ...notStarted];
+
   if (q) {
     const rx = new RegExp(escapeRegex(q), 'i');
     rows = rows.filter((r) => rx.test(r.user?.name || '') || rx.test(r.user?.participantId || ''));
   }
+
   res.json({ summary, items: rows });
 });
 
 exports.attemptDetail = asyncHandler(async (req, res) => {
   const attempt = await Attempt.findById(req.params.attemptId).populate('user', 'name participantId');
   if (!attempt) throw new ApiError(404, 'Attempt not found', 'NOT_FOUND');
+
   const comp = await Competition.findById(attempt.competition).select('title negativeMarking');
   const questions = await Question.find({ _id: { $in: attempt.questionOrder } }).select('+correctOption +explanation');
   const byId = new Map(questions.map((q) => [String(q._id), q]));
@@ -109,18 +114,22 @@ exports.forceSubmit = asyncHandler(async (req, res) => {
   const attempt = await Attempt.findById(req.params.attemptId);
   if (!attempt) throw new ApiError(404, 'Attempt not found', 'NOT_FOUND');
   if (attempt.status !== 'in_progress') throw new ApiError(409, 'This attempt is already submitted', 'ALREADY_SUBMITTED');
+
   const done = await finalizeAttempt(attempt._id, { type: 'admin' });
   await audit(req, 'ATTEMPT_FORCE_SUBMITTED', { entityType: 'Attempt', entityId: attempt._id, meta: { competition: attempt.competition } });
   res.json({ ok: true, status: done.status });
 });
 
 /* ------------------------- results / export ------------------------- */
+
 exports.results = asyncHandler(async (req, res) => {
   const comp = await compOr404(req.params.id);
   await finalizeExpired({ competition: comp._id });
+
   const rows = await computeLeaderboard(comp._id);
   const eligible = await eligibleUsers(comp);
   const scores = rows.map((r) => r.score);
+
   res.json({
     items: rows,
     summary: {
@@ -138,12 +147,14 @@ exports.results = asyncHandler(async (req, res) => {
 exports.exportCsv = asyncHandler(async (req, res) => {
   const comp = await compOr404(req.params.id);
   await finalizeExpired({ competition: comp._id });
+
   const board = await computeLeaderboard(comp._id);
   const rankByUser = new Map(board.map((r) => [String(r.userId), r.rank]));
   const attempts = await Attempt.find({ competition: comp._id, status: { $in: Attempt.FINAL_STATUSES } })
     .populate('user', 'name participantId email organization')
     .sort({ score: -1, timeTakenSeconds: 1 })
     .lean();
+
   const eligible = await eligibleUsers(comp);
   const attemptedIds = new Set(attempts.map((a) => String(a.user?._id)));
 
@@ -153,6 +164,7 @@ exports.exportCsv = asyncHandler(async (req, res) => {
     'Correct', 'Wrong', 'Unanswered',
   ];
   const rows = [header];
+
   for (const a of attempts) {
     const pct = a.maxScore ? Math.round((a.score / a.maxScore) * 10000) / 100 : 0;
     rows.push([
@@ -161,11 +173,13 @@ exports.exportCsv = asyncHandler(async (req, res) => {
       a.correctCount, a.wrongCount, a.unansweredCount,
     ]);
   }
+
   for (const u of eligible.filter((x) => !attemptedIds.has(String(x._id)))) {
     rows.push(['', u.participantId, u.name, u.email, '', '', 'not attempted', '', '', '', '', '', '', '', '', '']);
   }
 
   await audit(req, 'RESULTS_EXPORTED', { entityType: 'Competition', entityId: comp._id, meta: { rows: rows.length - 1 } });
+
   const slug = comp.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'competition';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="results-${slug}-${new Date().toISOString().slice(0, 10)}.csv"`);
@@ -173,25 +187,32 @@ exports.exportCsv = asyncHandler(async (req, res) => {
 });
 
 /* ------------------------- dashboard + audit ------------------------- */
+
 exports.stats = asyncHandler(async (_req, res) => {
   const now = new Date();
   const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
+
   await finalizeExpired();
 
-  const [participants, activeParticipants, comps, inProgress, submittedToday, upcoming, live, recent] = await Promise.all([
-    User.countDocuments({ role: 'student' }),
-    User.countDocuments({ role: 'student', isActive: true }),
+  const [participants, activeParticipants, comps, inProgress, submittedToday, upcoming, live, recent, totalTeams, activeTeams] = await Promise.all([
+    User.countDocuments({ role: { $in: ['student', 'leader', 'member'] } }),
+    User.countDocuments({ role: { $in: ['student', 'leader', 'member'] }, isActive: true }),
     Competition.aggregate([{ $group: { _id: '$status', n: { $sum: 1 } } }]),
     Attempt.countDocuments({ status: { $in: ['in_progress', 'grading'] } }),
     Attempt.countDocuments({ status: { $in: Attempt.FINAL_STATUSES }, submittedAt: { $gte: startOfDay } }),
     Competition.find({ status: 'published', startTime: { $gt: now } }).sort({ startTime: 1 }).limit(5).select('title startTime endTime'),
     Competition.find({ status: 'published', startTime: { $lte: now }, endTime: { $gt: now } }).sort({ endTime: 1 }).limit(5).select('title startTime endTime'),
     AuditLog.find().sort({ createdAt: -1 }).limit(8),
+    Team.countDocuments(),
+    Team.countDocuments({ isActive: true }),
   ]);
+
   const byStatus = Object.fromEntries(comps.map((c) => [c._id, c.n]));
+
   res.json({
     participants: { total: participants, active: activeParticipants },
+    teams: { total: totalTeams, active: activeTeams },
     competitions: { draft: byStatus.draft || 0, published: byStatus.published || 0, archived: byStatus.archived || 0 },
     attempts: { inProgress, submittedToday },
     upcoming: upcoming.map((c) => c.toJSON()),
@@ -205,6 +226,7 @@ exports.auditLogs = asyncHandler(async (req, res) => {
   const filter = {};
   if (action) filter.action = action;
   if (q) filter.$or = [{ actorLabel: new RegExp(escapeRegex(q), 'i') }, { entityId: q }];
+
   const [items, total] = await Promise.all([
     AuditLog.find(filter)
       .sort({ createdAt: -1 })
@@ -212,5 +234,6 @@ exports.auditLogs = asyncHandler(async (req, res) => {
       .limit(limit),
     AuditLog.countDocuments(filter),
   ]);
+
   res.json({ items: items.map((i) => i.toJSON()), total, page, pages: Math.max(1, Math.ceil(total / limit)) });
 });
