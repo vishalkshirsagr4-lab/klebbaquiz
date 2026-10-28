@@ -31,7 +31,7 @@ async function seedDefaults() {
 
     // 2. Remove demo student if present
     await User.deleteMany({
-      $or: [{ username: 'student' }, { participantId: 'QM-DEMO1' }],
+      $or: [{ username: 'student' }, { participantId: 'QM-DEMO01' }, { participantId: 'QM-DEMO1' }],
     });
 
     // 3. Remove old sample competition if present
