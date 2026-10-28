@@ -5,83 +5,94 @@ const { refreshStats } = require('../services/competition');
 const env = require('./env');
 
 async function seedDefaults() {
-  // In production, do not automatically seed default test passwords
+  // In production, do not automatically seed default test passwords unless permitted
   if (env.isProd && process.env.ALLOW_SEED !== 'true') {
     return;
   }
   try {
-    // 1. Ensure admin account exists
+    // 1. Ensure administrator account exists
     let admin = await User.findOne({ role: 'admin' });
+    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
     if (!admin) {
-      const adminHash = await User.hashPassword('AdminPassword123!');
+      const adminHash = await User.hashPassword(adminPassword);
       admin = await User.create({
-        username: 'admin',
-        email: 'admin@quizmaster.com',
-        name: 'QuizMaster Administrator',
+        username: adminUsername,
+        email: process.env.ADMIN_EMAIL || 'admin@klebba.edu',
+        name: 'Administrator',
         role: 'admin',
         passwordHash: adminHash,
         mustChangePassword: false,
         isActive: true,
         failedLoginCount: 0,
       });
-      console.log('[seed] Default admin created (admin / AdminPassword123!)');
+      console.log(`[seed] Administrator initialized (${admin.username})`);
     }
 
-    // 2. Ensure student account exists
-    let student = await User.findOne({ username: 'student' });
-    if (!student) {
-      const studentHash = await User.hashPassword('Student12345!');
-      student = await User.create({
-        username: 'student',
-        participantId: 'QM-DEMO1',
-        name: 'Demo Student (Alex)',
-        role: 'student',
-        organization: 'Tech Academy',
-        passwordHash: studentHash,
-        mustChangePassword: false,
-        isActive: true,
-        failedLoginCount: 0,
-      });
-      console.log('[seed] Default student created (student / Student12345!)');
+    // 2. Remove demo student if present
+    await User.deleteMany({
+      $or: [{ username: 'student' }, { participantId: 'QM-DEMO1' }],
+    });
+
+    // 3. Remove old sample competition if present
+    const oldSample = await Competition.findOne({ title: 'Sample General Knowledge Challenge' });
+    if (oldSample) {
+      await Question.deleteMany({ competition: oldSample._id });
+      await Competition.deleteOne({ _id: oldSample._id });
     }
 
-    // 3. Ensure a sample competition exists if none exist
-    const count = await Competition.countDocuments();
-    if (count === 0) {
-      let sampleData;
+    // 4. Ensure "AI MIND MASTERS – FIRST ROUND" competition exists with 60 questions
+    const title = 'AI MIND MASTERS – FIRST ROUND';
+    let comp = await Competition.findOne({ title });
+
+    if (!comp) {
+      let questionsData = [];
       try {
-        sampleData = require('../../data/sample-quiz.json');
+        const fileData = require('../../data/ai-mind-masters-questions.json');
+        questionsData = fileData.questions || [];
       } catch {
         try {
-          sampleData = require('../../../server/data/sample-quiz.json');
+          const fileData = require('../../../server/data/ai-mind-masters-questions.json');
+          questionsData = fileData.questions || [];
         } catch {}
       }
 
-      if (sampleData && sampleData.competition && sampleData.questions) {
+      if (questionsData.length > 0) {
         const now = Date.now();
-        const comp = await Competition.create({
-          ...sampleData.competition,
-          startTime: new Date(now - 60 * 60 * 1000), // Started 1 hour ago (Live)
-          endTime: new Date(now + 24 * 60 * 60 * 1000), // Ends in 24 hours
+        comp = await Competition.create({
+          title,
+          description: 'KLE Society’s College of BBA, Mahalingpur | AI Mind Masters Competition Round 1',
+          instructions:
+            'Total Questions: 60 | Maximum Marks: 60 | Marks per Question: 1 | Time Allowed: 30 Minutes.\n' +
+            'Each question has four options with exactly one correct answer. No negative marking. Your answers are autosaved in real time.',
+          startTime: new Date(now - 2 * 60 * 60 * 1000), // Live now
+          endTime: new Date(now + 60 * 24 * 60 * 60 * 1000), // Open for participants
+          durationMinutes: 30,
+          negativeMarking: { enabled: false, fraction: 0 },
+          shuffleQuestions: true,
+          shuffleOptions: true,
+          maxAttempts: 1,
+          visibility: 'all',
+          showLeaderboard: true,
           status: 'published',
-          assignedParticipants: [student._id],
           createdBy: admin._id,
         });
 
-        for (const [i, d] of sampleData.questions.entries()) {
+        for (const [i, qData] of questionsData.entries()) {
           const q = new Question({
             competition: comp._id,
             order: i,
-            text: d.text,
-            options: d.options.map((text) => ({ text })),
-            explanation: d.explanation,
-            marks: d.marks,
+            text: qData.text,
+            options: qData.options.map((text) => ({ text })),
+            explanation: qData.explanation || '',
+            marks: qData.marks || 1,
           });
-          q.correctOption = q.options[d.correctIndex]._id;
+          q.correctOption = q.options[qData.correctIndex]._id;
           await q.save();
         }
+
         await refreshStats(comp._id);
-        console.log(`[seed] Created live sample competition "${comp.title}" with ${sampleData.questions.length} questions`);
+        console.log(`[seed] Competition "${comp.title}" initialized with ${questionsData.length} questions.`);
       }
     }
   } catch (err) {
